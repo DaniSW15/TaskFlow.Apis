@@ -1,0 +1,7 @@
+﻿services:
+  taskflow.apis:
+    image: taskflow.apis
+    build:
+      context: .
+      dockerfile: Dockerfile
+
