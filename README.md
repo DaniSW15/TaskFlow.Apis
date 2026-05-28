@@ -1,308 +1,228 @@
-# 🏗️ Estructura Backend Profesional
+# TaskFlow API
 
-```txt
-backend/
-│
-├── src/
-│   │
-│   ├── TaskFlow.Api/
-│   ├── TaskFlow.Application/
-│   ├── TaskFlow.Domain/
-│   ├── TaskFlow.Infrastructure/
-│   └── TaskFlow.Shared/
-│
-├── tests/
-│
-├── TaskFlow.sln
-├── .gitignore
-└── README.md
+REST API de gestión de tareas construida con **.NET 10**, Clean Architecture, CQRS y JWT.
+
+---
+
+## Stack
+
+| Tecnología | Versión | Uso |
+|---|---|---|
+| .NET | 10.0 | Runtime |
+| ASP.NET Core | 10.0 | Framework HTTP |
+| Entity Framework Core | 9.0.4 | ORM |
+| PostgreSQL | 17 | Base de datos |
+| MediatR | 12.4.1 | CQRS / Mediator |
+| FluentValidation | 11.11.0 | Validación |
+| BCrypt.Net-Next | 4.0.3 | Hash de contraseñas |
+| JWT Bearer | 9.0.5 | Autenticación |
+| Swashbuckle | 7.3.1 | Swagger UI |
+| Docker | — | Contenedores |
+
+---
+
+## Arquitectura
+
+```
+TaskFlow.Shared         → tipos comunes (Result, Error, PaginatedList)
+TaskFlow.Domain         → entidades, enums, interfaces de repositorio
+TaskFlow.Application    → CQRS (commands/queries/handlers), DTOs, validaciones
+TaskFlow.Infrastructure → EF Core, repositorios, JWT, BCrypt
+TaskFlow.Apis           → controllers, middleware, Program.cs
 ```
 
----
-
-# 📁 ¿Qué significa cada carpeta?
-
-## src/
-
-Contiene TODO el código principal del backend.
+Las dependencias fluyen hacia adentro: `Apis → Application → Domain ← Infrastructure`.
 
 ---
 
-## TaskFlow.Api/
+## Estructura de carpetas
 
-Responsable de:
-
-* Controllers
-* JWT
-* Swagger
-* Middlewares
-* configuración HTTP
-
-Ejemplo:
-
-```txt
-TaskFlow.Api/
-│
-├── Controllers/
-├── Middleware/
-├── Extensions/
+```
+TaskFlow.Apis/
+├── Controllers/       AuthController, BoardsController, TasksController
+├── Middlware/         ExceptionHandlingMiddleware, SecurityHeadersMiddleware
+├── Extensions/        SwaggerExtensions
+├── Services/          CurrentUserService
 ├── Program.cs
-└── appsettings.json
-```
+└── compose.yaml
 
----
-
-## TaskFlow.Application/
-
-Contiene:
-
-* lógica de negocio
-* commands
-* queries
-* DTOs
-* validaciones
-
-Ejemplo:
-
-```txt
 TaskFlow.Application/
-│
 ├── Features/
-├── DTOs/
-├── Interfaces/
-└── Behaviors/
-```
+│   ├── Auth/Commands/ Login, Register, Logout, RefreshToken
+│   ├── Boards/        Commands (Create, Update, Delete) + Queries (GetBoards, GetById)
+│   └── Tasks/         Commands (Create, Update, Delete) + Queries (GetByBoard, GetById)
+├── Behaviors/         LoggingBehavior, ValidationBehavior
+├── DTOs/              AuthResponse, BoardDto, TaskDto, ...
+└── Interfaces/        ICurrentUserService, IPasswordService, ITokenService
 
----
-
-## TaskFlow.Domain/
-
-Núcleo principal del sistema.
-
-Contiene:
-
-* Entities
-* Enums
-* Interfaces
-* reglas del negocio
-
-Ejemplo:
-
-```txt
 TaskFlow.Domain/
-│
-├── Entities/
-├── Enums/
-├── Common/
-└── Interfaces/
-```
+├── Entities/          User, Board, TaskItem
+├── Enums/             TaskItemStatus, TaskPriority, UserRole
+├── Common/            BaseEntity
+└── Interfaces/        IUnitOfWork, IUserRepository, IBoardRepository, ITaskRepository
 
----
-
-## TaskFlow.Infrastructure/
-
-Conecta:
-
-* PostgreSQL
-* Entity Framework Core
-* servicios externos
-* repositories
-
-Ejemplo:
-
-```txt
 TaskFlow.Infrastructure/
-│
-├── Persistence/
-├── Repositories/
-├── Services/
+├── Persistence/       AppDbContext + EF configurations
+├── Repositories/      UserRepository, BoardRepository, TaskRepository, UnitOfWork
+├── Services/          TokenService, PasswordService
+├── Configurations/    JwtSettings
 └── Migrations/
+
+TaskFlow.Shared/
+└── Common/            Result<T>, Error, ApiResponse<T>, PaginatedList<T>
 ```
 
 ---
 
-## TaskFlow.Shared/
-
-Código compartido.
-
-Ejemplo:
-
-* constantes
-* helpers
-* responses
-* exceptions
-
----
-
-# 🧪 tests/
-
-Pruebas unitarias y testing.
-
-Ejemplo:
-
-```txt
-tests/
-│
-├── TaskFlow.UnitTests/
-└── TaskFlow.IntegrationTests/
-```
-
----
-
-# 🚀 Cómo crear estructura
-
-## 1. Crear carpeta backend
+## Ejecutar con Docker
 
 ```bash
-mkdir backend
-cd backend
+# Desde TaskFlow.Apis/
+docker compose up --build
 ```
+
+La API queda disponible en `http://localhost:8080`.
+Swagger UI: `http://localhost:8080/swagger`.
+
+Las migraciones se aplican automáticamente al arrancar el contenedor.
+
+### Variables de entorno
+
+| Variable | Default | Descripción |
+|---|---|---|
+| `ConnectionStrings__DefaultConnection` | `Host=postgres;...` | Cadena de conexión PostgreSQL |
+| `JwtSettings__SecretKey` | `change-me-in-production-32chars!!` | **Cambiar en producción** |
+| `JwtSettings__Issuer` | `TaskFlow.Api` | Issuer del JWT |
+| `JwtSettings__Audience` | `TaskFlow.Client` | Audience del JWT |
 
 ---
 
-# 2. Crear solución
+## Ejecutar localmente (sin Docker)
 
 ```bash
-dotnet new sln -n TaskFlow
+# Levantar PostgreSQL
+docker run -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=taskflow -p 5432:5432 postgres:17-alpine
+
+# Aplicar migraciones
+dotnet ef database update --project TaskFlow.Infrastructure --startup-project TaskFlow.Apis
+
+# Ejecutar
+dotnet run --project TaskFlow.Apis
 ```
 
 ---
 
-# 3. Crear carpeta src
+## Endpoints
+
+### Auth
+
+| Método | Ruta | Auth | Descripción |
+|---|---|---|---|
+| `POST` | `/api/Auth/register` | ❌ | Crear cuenta |
+| `POST` | `/api/Auth/login` | ❌ | Iniciar sesión |
+| `POST` | `/api/Auth/refresh` | ❌ | Renovar access token |
+| `POST` | `/api/Auth/logout` | ✅ | Cerrar sesión |
+
+### Boards
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| `GET` | `/api/Boards?pageNumber=1&pageSize=20` | Listar boards del usuario |
+| `GET` | `/api/Boards/{id}` | Obtener board por ID |
+| `POST` | `/api/Boards` | Crear board |
+| `PUT` | `/api/Boards/{id}` | Actualizar board |
+| `DELETE` | `/api/Boards/{id}` | Borrar board (soft-delete) |
+
+### Tasks
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| `GET` | `/api/Tasks?boardId={id}&pageNumber=1&pageSize=50` | Listar tareas de un board |
+| `GET` | `/api/Tasks/{id}` | Obtener tarea por ID |
+| `POST` | `/api/Tasks?boardId={id}` | Crear tarea |
+| `PUT` | `/api/Tasks/{id}` | Actualizar tarea |
+| `DELETE` | `/api/Tasks/{id}` | Borrar tarea (soft-delete) |
+
+Todos los endpoints de Boards y Tasks requieren `Authorization: Bearer <accessToken>`.
+
+---
+
+## Autenticación
+
+```
+Authorization: Bearer <accessToken>
+```
+
+El `accessToken` expira en **15 minutos**. Usar el `refreshToken` (7 días) para renovarlo sin re-autenticar.
+
+---
+
+## Features implementados
+
+### Roles
+Los usuarios tienen rol `Member` (0) o `Admin` (1). El rol está en el JWT y se devuelve en cada respuesta de auth.
+
+### Soft-delete
+Delete no borra físicamente — marca `IsDeleted = true` y guarda `DeletedAt` / `DeletedBy`. Los global query filters de EF Core excluyen registros borrados de todas las queries automáticamente.
+
+### Auditoría
+Todas las entidades heredan de `BaseEntity`:
+- `CreatedAt` / `UpdatedAt` — se setean automáticamente en `SaveChangesAsync`
+- `CreatedBy` — ID del usuario que creó el registro
+- `DeletedAt` / `DeletedBy` — se rellenan al hacer soft-delete
+
+### Paginación
+Los endpoints de colecciones devuelven `PaginatedList<T>`:
+
+```json
+{
+  "items": [...],
+  "totalCount": 42,
+  "pageNumber": 1,
+  "pageSize": 20,
+  "totalPages": 3,
+  "hasNextPage": true,
+  "hasPreviousPage": false
+}
+```
+
+### Seguridad (OWASP)
+- Headers: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Content-Security-Policy`, `Permissions-Policy`
+- Rate limiting: 10 req/min en `/Auth/*`, 100 req/min general
+- Contraseñas: BCrypt work factor 12
+- JWT: `HmacSha256`, `ClockSkew = 0`, validación de issuer y audience
+
+---
+
+## Conexión a PostgreSQL
+
+```
+Host:     localhost  |  Port: 5432
+Database: taskflow   |  User: postgres  |  Password: postgres
+```
+
+---
+
+## Migraciones
 
 ```bash
-mkdir src
-cd src
+# Crear
+dotnet ef migrations add <Nombre> --project TaskFlow.Infrastructure --startup-project TaskFlow.Apis
+
+# Aplicar
+dotnet ef database update --project TaskFlow.Infrastructure --startup-project TaskFlow.Apis
+
+# Revertir última
+dotnet ef migrations remove --project TaskFlow.Infrastructure --startup-project TaskFlow.Apis
 ```
 
 ---
 
-# 4. Crear proyectos
+## CI/CD
 
-```bash
-dotnet new webapi -n TaskFlow.Api
+| Workflow | Trigger | Acción |
+|---|---|---|
+| `ci.yml` | Push / PR a `main`, `develop` | `dotnet build` + `dotnet test` |
+| `cd.yml` | Push a `main` o tag `v*` | Build Docker → push a GHCR |
 
-dotnet new classlib -n TaskFlow.Application
-
-dotnet new classlib -n TaskFlow.Domain
-
-dotnet new classlib -n TaskFlow.Infrastructure
-
-dotnet new classlib -n TaskFlow.Shared
-```
-
----
-
-# 5. Regresar a raíz
-
-```bash
-cd ..
-```
-
----
-
-# 6. Agregar proyectos a solución
-
-```bash
-dotnet sln add src/**/*.csproj
-```
-
----
-
-# 7. Crear tests
-
-```bash
-mkdir tests
-cd tests
-
-dotnet new xunit -n TaskFlow.UnitTests
-```
-
----
-
-# 8. Agregar tests a solución
-
-```bash
-cd ..
-
-dotnet sln add tests/**/*.csproj
-```
-
----
-
-# 📦 Inicializar Git
-
-```bash
-git init
-```
-
----
-
-# 📄 Crear .gitignore
-
-```gitignore
-bin/
-obj/
-.vs/
-.idea/
-.vscode/
-.DS_Store
-```
-
----
-
-# 🚀 Primer Commit
-
-```bash
-git add .
-git commit -m "Initial backend clean architecture setup"
-```
-
----
-
-# ☁️ Subir a GitHub
-
-## Crear repositorio en GitHub
-
-Nombre recomendado:
-
-```txt
-taskflow-backend
-```
-
----
-
-# Conectar repositorio
-
-```bash
-git remote add origin https://github.com/usuario/taskflow-backend.git
-```
-
----
-
-# Push
-
-```bash
-git branch -M main
-git push -u origin main
-```
-
----
-
-# ✅ Resultado Profesional
-
-Tu backend quedará:
-
-* limpio
-* modular
-* enterprise-ready
-* escalable
-* preparado para frontend futuro
-
-Después puedes crear otro repositorio:
-
-```txt
-taskflow-frontend
-```
-
-o unirlos más adelante en monorepo.
+Imagen publicada en `ghcr.io/<owner>/taskflow.apis`.

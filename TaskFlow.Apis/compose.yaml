@@ -1,7 +1,45 @@
 ﻿services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: taskflow-postgres
+    environment:
+      POSTGRES_DB: taskflow
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   taskflow.apis:
     image: taskflow.apis
+    container_name: taskflow-api
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: TaskFlow.Apis/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=taskflow;Username=postgres;Password=postgres
+      - JwtSettings__SecretKey=${JWT_SECRET_KEY:-change-me-in-production-32chars!!}
+      - JwtSettings__Issuer=TaskFlow.Api
+      - JwtSettings__Audience=TaskFlow.Client
+      - AllowedOrigins__0=http://localhost:3000
+      - AllowedOrigins__1=http://localhost:4200
+    volumes:
+      - dataprotection_keys:/home/app/.aspnet/DataProtection-Keys
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  dataprotection_keys:
 
