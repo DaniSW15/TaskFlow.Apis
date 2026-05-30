@@ -15,6 +15,8 @@ public sealed class User : BaseEntity
 
     public ICollection<Board> Boards { get; set; } = [];
     public ICollection<TaskItem> AssignedTasks { get; set; } = [];
+    public ICollection<Project> ManagedProjects { get; set; } = [];
+    public ICollection<Comment> Comments { get; set; } = [];
 
     public string FullName => $"{FirstName} {LastName}";
 }

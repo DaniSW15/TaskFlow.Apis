@@ -22,6 +22,21 @@ namespace TaskFlow.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("TagTaskItem", b =>
+                {
+                    b.Property<Guid>("TagsId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TasksId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("TagsId", "TasksId");
+
+                    b.HasIndex("TasksId");
+
+                    b.ToTable("TaskItemTags", (string)null);
+                });
+
             modelBuilder.Entity("TaskFlow.Domain.Entities.Board", b =>
                 {
                     b.Property<Guid>("Id")
@@ -50,6 +65,9 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ProjectId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -64,7 +82,218 @@ namespace TaskFlow.Infrastructure.Migrations
 
                     b.HasIndex("OwnerId");
 
+                    b.HasIndex("ProjectId");
+
                     b.ToTable("Boards");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.Client", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Company")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("IsDeleted");
+
+                    b.ToTable("Clients");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.Comment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AuthorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("TaskItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuthorId");
+
+                    b.HasIndex("IsDeleted");
+
+                    b.HasIndex("TaskItemId");
+
+                    b.ToTable("Comments");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.Project", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AnalystId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("StartDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnalystId");
+
+                    b.HasIndex("ClientId");
+
+                    b.HasIndex("IsDeleted");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("Projects");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.Tag", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .HasColumnType("character varying(7)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsDeleted");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Tags");
                 });
 
             modelBuilder.Entity("TaskFlow.Domain.Entities.TaskItem", b =>
@@ -193,6 +422,21 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("TagTaskItem", b =>
+                {
+                    b.HasOne("TaskFlow.Domain.Entities.Tag", null)
+                        .WithMany()
+                        .HasForeignKey("TagsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TaskFlow.Domain.Entities.TaskItem", null)
+                        .WithMany()
+                        .HasForeignKey("TasksId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("TaskFlow.Domain.Entities.Board", b =>
                 {
                     b.HasOne("TaskFlow.Domain.Entities.User", "Owner")
@@ -201,7 +445,52 @@ namespace TaskFlow.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("TaskFlow.Domain.Entities.Project", "Project")
+                        .WithMany("Boards")
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Owner");
+
+                    b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.Comment", b =>
+                {
+                    b.HasOne("TaskFlow.Domain.Entities.User", "Author")
+                        .WithMany("Comments")
+                        .HasForeignKey("AuthorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TaskFlow.Domain.Entities.TaskItem", "TaskItem")
+                        .WithMany("Comments")
+                        .HasForeignKey("TaskItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Author");
+
+                    b.Navigation("TaskItem");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.Project", b =>
+                {
+                    b.HasOne("TaskFlow.Domain.Entities.User", "Analyst")
+                        .WithMany("ManagedProjects")
+                        .HasForeignKey("AnalystId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TaskFlow.Domain.Entities.Client", "Client")
+                        .WithMany("Projects")
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Analyst");
+
+                    b.Navigation("Client");
                 });
 
             modelBuilder.Entity("TaskFlow.Domain.Entities.TaskItem", b =>
@@ -227,11 +516,30 @@ namespace TaskFlow.Infrastructure.Migrations
                     b.Navigation("Tasks");
                 });
 
+            modelBuilder.Entity("TaskFlow.Domain.Entities.Client", b =>
+                {
+                    b.Navigation("Projects");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.Project", b =>
+                {
+                    b.Navigation("Boards");
+                });
+
+            modelBuilder.Entity("TaskFlow.Domain.Entities.TaskItem", b =>
+                {
+                    b.Navigation("Comments");
+                });
+
             modelBuilder.Entity("TaskFlow.Domain.Entities.User", b =>
                 {
                     b.Navigation("AssignedTasks");
 
                     b.Navigation("Boards");
+
+                    b.Navigation("Comments");
+
+                    b.Navigation("ManagedProjects");
                 });
 #pragma warning restore 612, 618
         }

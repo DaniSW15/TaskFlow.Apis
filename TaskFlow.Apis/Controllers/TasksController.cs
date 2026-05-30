@@ -1,12 +1,17 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TaskFlow.Application.DTOs.Comments;
 using TaskFlow.Application.DTOs.Tasks;
+using TaskFlow.Application.Features.Comments.Commands.AddComment;
+using TaskFlow.Application.Features.Comments.Commands.DeleteComment;
+using TaskFlow.Application.Features.Comments.Queries.GetComments;
 using TaskFlow.Application.Features.Tasks.Commands.CreateTask;
 using TaskFlow.Application.Features.Tasks.Commands.DeleteTask;
 using TaskFlow.Application.Features.Tasks.Commands.UpdateTask;
 using TaskFlow.Application.Features.Tasks.Queries.GetTaskById;
 using TaskFlow.Application.Features.Tasks.Queries.GetTasksByBoard;
+using TaskFlow.Application.Features.Tasks.Queries.GetTasksByBoardWithCursor;
 using TaskFlow.Application.Interfaces;
 using TaskFlow.Shared.Common;
 
@@ -38,6 +43,26 @@ public sealed class TasksController : ControllerBase
             new GetTasksByBoardQuery(boardId, _currentUser.UserId, pageNumber, pageSize), cancellationToken);
         return result.IsSuccess
             ? Ok(ApiResponse<PaginatedList<TaskDto>>.FromResult(result))
+            : MapErrorToResponse(result.Error);
+    }
+
+    /// <summary>
+    /// Paginación por cursores (keyset pagination).
+    /// Más eficiente que offset para tablas grandes y evita drift en tiempo real.
+    /// Usar el campo nextCursor de la respuesta para obtener la siguiente página.
+    /// </summary>
+    [HttpGet("cursor")]
+    [ProducesResponseType(typeof(ApiResponse<CursorPaginatedList<TaskDto>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetTasksByBoardWithCursor(
+        [FromQuery] Guid boardId,
+        [FromQuery] string? cursor = null,
+        [FromQuery] int pageSize = 50,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _mediator.Send(
+            new GetTasksByBoardWithCursorQuery(boardId, _currentUser.UserId, cursor, pageSize), cancellationToken);
+        return result.IsSuccess
+            ? Ok(ApiResponse<CursorPaginatedList<TaskDto>>.FromResult(result))
             : MapErrorToResponse(result.Error);
     }
 
@@ -104,6 +129,54 @@ public sealed class TasksController : ControllerBase
 
         return result.IsSuccess
             ? Ok(ApiResponse.Ok("Task deleted successfully."))
+            : MapErrorToResponse(result.Error);
+    }
+
+    // ── Comments (sub-recurso de Task) ─────────────────────────────────────────
+
+    [HttpGet("{taskId:guid}/comments")]
+    [ProducesResponseType(typeof(ApiResponse<PaginatedList<CommentDto>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetComments(
+        Guid taskId,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _mediator.Send(new GetCommentsQuery(taskId, pageNumber, pageSize), cancellationToken);
+        return result.IsSuccess
+            ? Ok(ApiResponse<PaginatedList<CommentDto>>.FromResult(result))
+            : MapErrorToResponse(result.Error);
+    }
+
+    [HttpPost("{taskId:guid}/comments")]
+    [ProducesResponseType(typeof(ApiResponse<Guid>), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> AddComment(
+        Guid taskId,
+        [FromBody] AddCommentRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command = new AddCommentCommand(taskId, request.Content, _currentUser.UserId);
+        var result = await _mediator.Send(command, cancellationToken);
+
+        return result.IsSuccess
+            ? CreatedAtAction(nameof(GetComments), new { taskId }, ApiResponse<Guid>.Ok(result.Value))
+            : MapErrorToResponse(result.Error);
+    }
+
+    [HttpDelete("{taskId:guid}/comments/{commentId:guid}")]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteComment(
+        Guid taskId,
+        Guid commentId,
+        CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(new DeleteCommentCommand(commentId, _currentUser.UserId), cancellationToken);
+
+        return result.IsSuccess
+            ? Ok(ApiResponse.Ok("Comment deleted successfully."))
             : MapErrorToResponse(result.Error);
     }
 

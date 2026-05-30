@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using TaskFlow.Application.Common.Caching;
 using TaskFlow.Application.Interfaces;
 using TaskFlow.Domain.Interfaces;
 using TaskFlow.Infrastructure.Configurations;
@@ -31,6 +32,8 @@ public static class DependencyInjection
         // Application Services
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IPasswordService, PasswordService>();
+        services.AddMemoryCache();
+        services.AddSingleton<ICacheService, CacheService>();
 
         // JWT Settings
         var jwtSettings = configuration

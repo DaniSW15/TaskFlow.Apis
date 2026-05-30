@@ -38,6 +38,7 @@
       postgres:
         condition: service_healthy
     restart: unless-stopped
+    user: root  # permisos para escribir las DataProtection keys
 
 volumes:
   postgres_data:

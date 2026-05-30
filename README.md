@@ -2,6 +2,8 @@
 
 REST API de gestión de tareas construida con **.NET 10**, Clean Architecture, CQRS y JWT.
 
+Proyecto de práctica para aprender arquitectura de backend profesional: modelado de base de datos relacional, patrones de diseño, autenticación, paginación eficiente y testing.
+
 ---
 
 ## Stack
@@ -18,6 +20,8 @@ REST API de gestión de tareas construida con **.NET 10**, Clean Architecture, C
 | JWT Bearer | 9.0.5 | Autenticación |
 | Swashbuckle | 7.3.1 | Swagger UI |
 | Docker | — | Contenedores |
+| xUnit + Moq | — | Unit tests |
+| FluentAssertions | 8.x | Assertions en tests |
 
 ---
 
@@ -32,6 +36,14 @@ TaskFlow.Apis           → controllers, middleware, Program.cs
 ```
 
 Las dependencias fluyen hacia adentro: `Apis → Application → Domain ← Infrastructure`.
+
+### Pipeline de MediatR
+
+```
+Request → LoggingBehavior → CachingBehavior → ValidationBehavior → Handler
+```
+
+`CachingBehavior` cortocircuita el pipeline en cache hit — ni la validación ni el handler se ejecutan.
 
 ---
 
@@ -56,20 +68,25 @@ TaskFlow.Application/
 └── Interfaces/        ICurrentUserService, IPasswordService, ITokenService
 
 TaskFlow.Domain/
-├── Entities/          User, Board, TaskItem
-├── Enums/             TaskItemStatus, TaskPriority, UserRole
+├── Entities/          User, Board, TaskItem, Client, Project, Comment, Tag
+├── Enums/             TaskItemStatus, TaskPriority, UserRole, ProjectStatus
 ├── Common/            BaseEntity
-└── Interfaces/        IUnitOfWork, IUserRepository, IBoardRepository, ITaskRepository
+└── Interfaces/        IUnitOfWork, IUserRepository, IBoardRepository, ITaskRepository,
+                       IClientRepository, IProjectRepository, ICommentRepository, ITagRepository
 
 TaskFlow.Infrastructure/
 ├── Persistence/       AppDbContext + EF configurations
-├── Repositories/      UserRepository, BoardRepository, TaskRepository, UnitOfWork
-├── Services/          TokenService, PasswordService
+├── Repositories/      UserRepository, BoardRepository, TaskRepository, UnitOfWork,
+                       ClientRepository, ProjectRepository, CommentRepository, TagRepository
+├── Services/          TokenService, PasswordService, CacheService
 ├── Configurations/    JwtSettings
 └── Migrations/
 
 TaskFlow.Shared/
-└── Common/            Result<T>, Error, ApiResponse<T>, PaginatedList<T>
+└── Common/            Result<T>, Error, ApiResponse<T>, PaginatedList<T>, CursorPaginatedList<T>
+
+TaskFlow.Tests/
+└── Features/          20 unit tests (Tags, Comments, relación N:M)
 ```
 
 ---
@@ -120,8 +137,17 @@ dotnet run --project TaskFlow.Apis
 |---|---|---|---|
 | `POST` | `/api/Auth/register` | ❌ | Crear cuenta |
 | `POST` | `/api/Auth/login` | ❌ | Iniciar sesión |
-| `POST` | `/api/Auth/refresh` | ❌ | Renovar access token |
-| `POST` | `/api/Auth/logout` | ✅ | Cerrar sesión |
+
+### Users
+
+| Método | Ruta | Roles | Descripción |
+|---|---|---|---|
+| `GET` | `/api/Users` | Admin | Listar todos los usuarios |
+| `GET` | `/api/Users/me` | Cualquiera | Perfil propio |
+| `PUT` | `/api/Users/me` | Cualquiera | Actualizar perfil propio |
+| `GET` | `/api/Users/{id}` | Admin | Obtener usuario por ID |
+| `PATCH` | `/api/Users/{id}/role` | Admin | Cambiar rol |
+| `DELETE` | `/api/Users/{id}` | Admin | Borrar usuario |
 
 ### Boards
 
@@ -131,19 +157,58 @@ dotnet run --project TaskFlow.Apis
 | `GET` | `/api/Boards/{id}` | Obtener board por ID |
 | `POST` | `/api/Boards` | Crear board |
 | `PUT` | `/api/Boards/{id}` | Actualizar board |
-| `DELETE` | `/api/Boards/{id}` | Borrar board (soft-delete) |
+| `DELETE` | `/api/Boards/{id}` | Borrar board |
 
 ### Tasks
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| `GET` | `/api/Tasks?boardId={id}&pageNumber=1&pageSize=50` | Listar tareas de un board |
+| `GET` | `/api/Tasks?boardId={id}&pageNumber=1&pageSize=50` | Paginación offset |
+| `GET` | `/api/Tasks/cursor?boardId={id}&cursor=&pageSize=50` | Paginación por cursor (keyset) |
 | `GET` | `/api/Tasks/{id}` | Obtener tarea por ID |
 | `POST` | `/api/Tasks?boardId={id}` | Crear tarea |
 | `PUT` | `/api/Tasks/{id}` | Actualizar tarea |
-| `DELETE` | `/api/Tasks/{id}` | Borrar tarea (soft-delete) |
+| `DELETE` | `/api/Tasks/{id}` | Borrar tarea |
 
-Todos los endpoints de Boards y Tasks requieren `Authorization: Bearer <accessToken>`.
+### Comments (sub-recurso de Task)
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| `GET` | `/api/Tasks/{taskId}/comments` | Listar comentarios paginados |
+| `POST` | `/api/Tasks/{taskId}/comments` | Agregar comentario |
+| `DELETE` | `/api/Tasks/{taskId}/comments/{id}` | Borrar (solo autor o Admin) |
+
+### Tags
+
+| Método | Ruta | Roles | Descripción |
+|---|---|---|---|
+| `GET` | `/api/Tags` | Cualquiera | Listar todos los tags |
+| `POST` | `/api/Tags` | Admin | Crear tag |
+| `DELETE` | `/api/Tags/{id}` | Admin | Borrar tag |
+| `POST` | `/api/Tasks/{taskId}/tags/{tagId}` | Cualquiera | Asociar tag a tarea (N:M) |
+| `DELETE` | `/api/Tasks/{taskId}/tags/{tagId}` | Cualquiera | Desasociar tag de tarea |
+
+### Clients
+
+| Método | Ruta | Roles | Descripción |
+|---|---|---|---|
+| `GET` | `/api/Clients` | Cualquiera | Listar clientes paginados |
+| `GET` | `/api/Clients/{id}` | Cualquiera | Obtener cliente |
+| `POST` | `/api/Clients` | Admin, Analyst | Crear cliente |
+| `PUT` | `/api/Clients/{id}` | Admin, Analyst | Actualizar cliente |
+| `DELETE` | `/api/Clients/{id}` | Admin | Borrar cliente |
+
+### Projects
+
+| Método | Ruta | Roles | Descripción |
+|---|---|---|---|
+| `GET` | `/api/Projects` | Cualquiera | Listar proyectos paginados |
+| `GET` | `/api/Projects/{id}` | Cualquiera | Obtener proyecto con boards |
+| `POST` | `/api/Projects` | Admin, Analyst | Crear proyecto |
+| `PUT` | `/api/Projects/{id}` | Admin, Analyst | Actualizar proyecto |
+| `DELETE` | `/api/Projects/{id}` | Admin | Borrar proyecto |
+
+Todos los endpoints requieren `Authorization: Bearer <token>` salvo los de Auth.
 
 ---
 
@@ -159,38 +224,54 @@ El `accessToken` expira en **15 minutos**. Usar el `refreshToken` (7 días) para
 
 ## Features implementados
 
+### Esquema de BD (7 tablas + 1 join table)
+
+```
+Users ──< Projects (AnalystId FK)
+Clients ──< Projects (ClientId FK)
+Projects ──< Boards (ProjectId FK, nullable)
+Boards ──< TaskItems (BoardId FK)
+TaskItems ──< Comments ──> Users (AuthorId FK)
+TaskItems >──< Tags    (join table: TaskItemTags)
+```
+
 ### Roles
-Los usuarios tienen rol `Member` (0) o `Admin` (1). El rol está en el JWT y se devuelve en cada respuesta de auth.
+
+| Rol | Permisos |
+|---|---|
+| `Member` | Leer/escribir sus propios boards y tareas, agregar comentarios |
+| `Analyst` | Todo lo anterior + gestionar clientes y proyectos |
+| `Admin` | Acceso total: usuarios, tags, roles |
+| `Client` | Solo lectura en proyectos asignados |
 
 ### Soft-delete
 Delete no borra físicamente — marca `IsDeleted = true` y guarda `DeletedAt` / `DeletedBy`. Los global query filters de EF Core excluyen registros borrados de todas las queries automáticamente.
 
-### Auditoría
-Todas las entidades heredan de `BaseEntity`:
-- `CreatedAt` / `UpdatedAt` — se setean automáticamente en `SaveChangesAsync`
-- `CreatedBy` — ID del usuario que creó el registro
-- `DeletedAt` / `DeletedBy` — se rellenan al hacer soft-delete
-
 ### Paginación
-Los endpoints de colecciones devuelven `PaginatedList<T>`:
 
+**Offset** (clásico):
 ```json
-{
-  "items": [...],
-  "totalCount": 42,
-  "pageNumber": 1,
-  "pageSize": 20,
-  "totalPages": 3,
-  "hasNextPage": true,
-  "hasPreviousPage": false
-}
+{ "items": [...], "totalCount": 42, "pageNumber": 1, "pageSize": 20, "totalPages": 3, "hasNextPage": true }
 ```
 
-### Seguridad (OWASP)
-- Headers: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Content-Security-Policy`, `Permissions-Policy`
-- Rate limiting: 10 req/min en `/Auth/*`, 100 req/min general
-- Contraseñas: BCrypt work factor 12
-- JWT: `HmacSha256`, `ClockSkew = 0`, validación de issuer y audience
+**Cursor / keyset** (eficiente en tablas grandes):
+```json
+{ "items": [...], "nextCursor": "eyJDcmVhdGVkQXQi...", "hasNextPage": true, "pageSize": 20 }
+```
+Pasar `nextCursor` como `?cursor=` en el siguiente request. No ejecuta `COUNT(*)` ni `OFFSET`.
+
+### Caché
+
+`GET /api/Tags` cachea el resultado por 10 minutos con `IMemoryCache`. El caché se invalida automáticamente al crear o borrar un tag. Implementado como **pipeline behavior de MediatR** — los handlers no tienen ningún conocimiento del caché.
+
+### Unit Tests
+
+```bash
+dotnet test TaskFlow.Tests/TaskFlow.Tests.csproj
+# Correctas! - 20/20
+```
+
+Tests cubren: `CreateTag`, `DeleteTag`, `AddComment`, `DeleteComment`, `AddTagToTask` (relación N:M). Cada handler tiene test de éxito, test de error, y test que verifica que no se llama `SaveChangesAsync` en caso de fallo.
 
 ---
 

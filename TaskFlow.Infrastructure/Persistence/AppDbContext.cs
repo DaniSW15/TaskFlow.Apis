@@ -18,6 +18,10 @@ public sealed class AppDbContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<Board> Boards => Set<Board>();
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
+    public DbSet<Client> Clients => Set<Client>();
+    public DbSet<Project> Projects => Set<Project>();
+    public DbSet<Comment> Comments => Set<Comment>();
+    public DbSet<Tag> Tags => Set<Tag>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -27,6 +31,10 @@ public sealed class AppDbContext : DbContext
         modelBuilder.Entity<User>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<Board>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<TaskItem>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<Client>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<Project>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<Comment>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<Tag>().HasQueryFilter(e => !e.IsDeleted);
 
         base.OnModelCreating(modelBuilder);
     }
