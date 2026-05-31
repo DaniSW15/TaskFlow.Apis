@@ -24,8 +24,8 @@ jobs:
         run: dotnet test --no-build --configuration Release
 
       - name: Build Docker image
-        run: docker build -t taskflow-api ./TaskFlow.Apis
+        run: docker build -t taskflow-api .
 
       - name: Deploy
-        # aquí depende de dónde despliegues (Railway, Render, VPS, Azure, etc.)
-        run: echo "deploy step"
+        # Render despliega automáticamente al detectar el push — no se necesita paso adicional
+        run: echo "Deploy triggered via Render GitHub integration"
