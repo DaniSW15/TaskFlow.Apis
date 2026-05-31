@@ -94,11 +94,15 @@ app.MapGet("/health", () => Results.Ok(new { status = "Healthy", timestamp = Dat
     .WithName("HealthCheck")
     .AllowAnonymous();
 
-// Apply pending EF Core migrations automatically on startup
+// Apply pending EF Core migrations automatically on startup + seed default users
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<TaskFlow.Infrastructure.Persistence.AppDbContext>();
+    var db       = scope.ServiceProvider.GetRequiredService<TaskFlow.Infrastructure.Persistence.AppDbContext>();
+    var password = scope.ServiceProvider.GetRequiredService<TaskFlow.Application.Interfaces.IPasswordService>();
+    var logger   = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
     await db.Database.MigrateAsync();
+    await TaskFlow.Infrastructure.Persistence.DbSeeder.SeedAsync(db, password, logger);
 }
 
 await app.RunAsync();

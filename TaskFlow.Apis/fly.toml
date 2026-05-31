@@ -1,0 +1,27 @@
+app = 'taskflow-apis'
+primary_region = 'ams'
+
+[build]
+  dockerfile = 'Dockerfile'
+  ignorefile = '.dockerignore'
+
+[env]
+  ASPNETCORE_ENVIRONMENT = 'Production'
+  ASPNETCORE_URLS        = 'http://+:8080'
+  DataProtection__KeysPath = '/home/app/.aspnet/DataProtection-Keys'
+
+[http_service]
+  internal_port       = 8080
+  force_https         = true
+  auto_stop_machines  = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type       = 'connections'
+    hard_limit = 25
+    soft_limit = 20
+
+[[vm]]
+  size   = 'shared-cpu-1x'
+  memory = '256mb'

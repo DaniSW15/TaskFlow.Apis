@@ -1,0 +1,31 @@
+# .github/workflows/deploy.yml
+name: Deploy TaskFlow
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore & Build
+        run: dotnet build --configuration Release
+
+      - name: Run Tests
+        run: dotnet test --no-build --configuration Release
+
+      - name: Build Docker image
+        run: docker build -t taskflow-api ./TaskFlow.Apis
+
+      - name: Deploy
+        # aquí depende de dónde despliegues (Railway, Render, VPS, Azure, etc.)
+        run: echo "deploy step"
