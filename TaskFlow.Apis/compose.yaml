@@ -32,6 +32,7 @@
       - JwtSettings__Audience=TaskFlow.Client
       - AllowedOrigins__0=http://localhost:3000
       - AllowedOrigins__1=http://localhost:4200
+      - AllowedOrigins__2=https://ng-tasksflow.netlify.app
     volumes:
       - dataprotection_keys:/home/app/.aspnet/DataProtection-Keys
     depends_on:
