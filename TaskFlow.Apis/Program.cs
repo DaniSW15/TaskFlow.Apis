@@ -85,8 +85,8 @@ if (swaggerEnabled)
     });
 }
 
-app.UseHttpsRedirection();
 app.UseCors("DefaultPolicy");
+app.UseHttpsRedirection();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();

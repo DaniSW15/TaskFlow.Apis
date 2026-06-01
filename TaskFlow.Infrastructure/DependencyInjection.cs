@@ -1,3 +1,4 @@
+using System;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -20,10 +21,11 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // Database
+        // Database - support both Render DATABASE_URL and traditional ConnectionStrings
+        var connectionString = GetConnectionString(configuration);
         services.AddDbContext<AppDbContext>(options =>
             options.UseNpgsql(
-                configuration.GetConnectionString("DefaultConnection"),
+                connectionString,
                 npgsql => npgsql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName)));
 
         // Unit of Work & Repositories
@@ -66,6 +68,30 @@ public static class DependencyInjection
         services.AddAuthorization();
 
         return services;
+    }
+
+    private static string GetConnectionString(IConfiguration configuration)
+    {
+        // Check for Render's DATABASE_URL environment variable (PostgreSQL URL format)
+        var databaseUrl = configuration["DATABASE_URL"];
+        
+        if (!string.IsNullOrEmpty(databaseUrl))
+        {
+            // Parse DATABASE_URL: postgresql://user:password@host:port/database
+            var uri = new Uri(databaseUrl);
+            var host = uri.Host;
+            var port = uri.Port;
+            var database = uri.AbsolutePath.TrimStart('/');
+            var userInfo = uri.UserInfo.Split(':');
+            var username = userInfo[0];
+            var password = userInfo.Length > 1 ? userInfo[1] : "";
+
+            return $"Host={host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
+        }
+
+        // Fallback to traditional connection string
+        return configuration.GetConnectionString("DefaultConnection") 
+               ?? throw new InvalidOperationException("No database connection string found.");
     }
 }
 

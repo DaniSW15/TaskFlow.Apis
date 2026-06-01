@@ -1,0 +1,42 @@
+# Archivos y directorios a ignorar en Docker build
+
+# Git
+.git/
+.gitignore
+.github/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Build artifacts
+**/bin/
+**/obj/
+**/publish/
+
+# NuGet
+**/*.nupkg
+**/*.snupkg
+**/packages/
+
+# Tests
+**/TestResults/
+
+# Logs
+**/*.log
+**/logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+*.md
+!README.md
+
+# Otros
+**/.vs/
+**/node_modules/
